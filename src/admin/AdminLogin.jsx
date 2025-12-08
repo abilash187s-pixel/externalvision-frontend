@@ -4,26 +4,18 @@ export default function AdminLogin({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
+// AdminLogin.jsx (top)
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.externalvisionacademy.com';
 
   async function submit(e) {
     e.preventDefault();
     setErr('');
-    try {
-      const res = await fetch('/admin/login', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ email, password })
-      });
-      const data = await res.json();
-      if (res.ok && data.token) {
-        localStorage.setItem('admin_token', data.token);
-        onLogin && onLogin(data.token);
-      } else {
-        setErr(data.error || 'Login failed');
-      }
-    } catch (e) {
-      setErr('Network error');
-    }
+   const res = await fetch(`${API_BASE}/admin/login`, {
+  method: 'POST',
+  headers: {'Content-Type':'application/json'},
+  body: JSON.stringify({ email, password })
+});
+
   }
 
   return (

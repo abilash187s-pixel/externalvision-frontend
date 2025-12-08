@@ -8,12 +8,17 @@ function getToken() {
   return localStorage.getItem('admin_token');
 }
 
+// at top of admin file
+const API_BASE = import.meta.env.VITE_API_URL || 'https://api.externalvisionacademy.com';
+
 function authFetch(url, opts = {}) {
   opts.headers = opts.headers || {};
-  const tk = getToken();
+  const tk = localStorage.getItem('admin_token');
   if (tk) opts.headers.Authorization = 'Bearer ' + tk;
-  return fetch(url, opts);
+  const full = url.startsWith('http') ? url : (API_BASE.replace(/\/$/,'') + (url.startsWith('/') ? url : '/'+url));
+  return fetch(full, opts);
 }
+
 
 function DetailsModal({ item, onClose }) {
   if (!item) return null;
