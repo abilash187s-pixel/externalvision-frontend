@@ -4,6 +4,9 @@ import AnimatedLogo from './components/AnimatedLogo';
 import ProductSlider from './components/ProductSlider';
 import './styles.css';
 import Advantages from './components/Advantages';
+import { motion } from "framer-motion";
+import { useState } from "react";
+import AdminDashboard from './admin/AdminDashboard';
 
 const PRODUCTS = [
   { id: 'product-3', title: 'Creative Writing', preview: 'TBA', image: '/images/shot3.jpeg', price: '₹299' },
@@ -52,7 +55,207 @@ function Home(){ return (<main><Hero /><ProductSlider /> <Advantages /><section 
 
 function ProductDetail(){ const { id } = useParams(); const p = PRODUCTS.find(x=>x.id===id); const nav = useNavigate(); if (!p) return <div className="container"><p>Not found</p></div>; return (<div className="container section"><button onClick={() => nav(-1)} className="btn-link">← Back</button><div className="detail-two"><img src={p.image} alt={p.title}/><div><h2>{p.title}</h2><p className="muted">Starts: {p.preview}</p><p>Longer course description with outcomes, syllabus and instructor info. Suitable for learners of all levels.</p><Link to="/register" className="btn">Register</Link></div></div></div>); }
 
-function Register(){ const [form, setForm] = React.useState({ name:'', location:'', age:'', whatsapp:'', email:'', phone:'' }); const [status, setStatus] = React.useState(null); function onChange(e){ setForm(s=>({...s,[e.target.name]:e.target.value})); } async function onSubmit(e){ e.preventDefault(); try { const res = await fetch('/api/submit', { method: 'POST', headers: { 'Content-Type':'application/json' }, body: JSON.stringify(form) }); const data = await res.json(); if (res.ok) setStatus('registered'); else if (res.status === 202) setStatus('saved'); else setStatus('error'); } catch (err) { console.error(err); setStatus('local'); const subs = JSON.parse(localStorage.getItem('submissions'||'[]')); subs.push(form); localStorage.setItem('submissions', JSON.stringify(subs)); } } return (<div className="container section"><div className="form-card"><h2>Register for a demo</h2>{status==='registered' && <div className="alert success">Registered & confirmation email sent!</div>}{status==='saved' && <div className="alert warn">Saved, email not sent.</div>}{status==='local' && <div className="alert warn">Saved locally (server unreachable).</div>}<form onSubmit={onSubmit} className="form-grid"><label className="floating">Name<input name="name" value={form.name} onChange={onChange} required/></label><label className="floating">Email<input type="email" name="email" value={form.email} onChange={onChange} required/></label><label className="floating">Phone<input name="phone" value={form.phone} onChange={onChange}/></label><label className="floating">WhatsApp<input name="whatsapp" value={form.whatsapp} onChange={onChange}/></label><label className="floating">Location<input name="location" value={form.location} onChange={onChange}/></label><label className="floating">Age<input name="age" value={form.age} onChange={onChange}/></label><button className="btn wide" type="submit">Submit</button></form></div></div>); }
+// function Register() {
+//   const [form, setForm] = React.useState({
+//     name: "",
+//     location: "",
+//     age: "",
+//     whatsapp: "",
+//     email: "",
+//     phone: "",
+//   });
+//   const [status, setStatus] = React.useState(null);
+//   function onChange(e) {
+//     setForm((s) => ({ ...s, [e.target.name]: e.target.value }));
+//   }
+//   async function onSubmit(e) {
+//     e.preventDefault();
+//     try {
+//       const res = await fetch("/api/submit", {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify(form),
+//       });
+//       const data = await res.json();
+//       if (res.ok) setStatus("registered");
+//       else if (res.status === 202) setStatus("saved");
+//       else setStatus("error");
+//     } catch (err) {
+//       console.error(err);
+//       setStatus("local");
+//       const subs = JSON.parse(localStorage.getItem("submissions" || "[]"));
+//       subs.push(form);
+//       localStorage.setItem("submissions", JSON.stringify(subs));
+//     }
+//   }
+//   return (
+//     <div className="container section">
+//       <div className="form-card">
+//         <h2>Register for a demo</h2>
+//         {status === "registered" && (
+//           <div className="alert success">
+//             Registered & confirmation email sent!
+//           </div>
+//         )}
+//         {status === "saved" && (
+//           <div className="alert warn">Saved, email not sent.</div>
+//         )}
+//         {status === "local" && (
+//           <div className="alert warn">Saved locally (server unreachable).</div>
+//         )}
+//         <form onSubmit={onSubmit} className="form-grid">
+//           <label className="floating">
+//             Name
+//             <input name="name" value={form.name} onChange={onChange} required />
+//           </label>
+//           <label className="floating">
+//             Email
+//             <input
+//               type="email"
+//               name="email"
+//               value={form.email}
+//               onChange={onChange}
+//               required
+//             />
+//           </label>
+//           <label className="floating">
+//             Phone
+//             <input name="phone" value={form.phone} onChange={onChange} />
+//           </label>
+//           <label className="floating">
+//             WhatsApp
+//             <input name="whatsapp" value={form.whatsapp} onChange={onChange} />
+//           </label>
+//           <label className="floating">
+//             Location
+//             <input name="location" value={form.location} onChange={onChange} />
+//           </label>
+//           <label className="floating">
+//             Age
+//             <input name="age" value={form.age} onChange={onChange} />
+//           </label>
+//           <button className="btn wide" type="submit">
+//             Submit
+//           </button>
+//         </form>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+function Register() {
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    whatsapp: "",
+    location: "",
+    age: "",
+  });
+
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const API =
+    import.meta.env.VITE_API_URL || "https://api.externalvisionacademy.com";
+
+  function onChange(e) {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    setLoading(true);
+    setStatus(null);
+
+    try {
+      const res = await fetch(`${API}/api/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json?.();
+      if (res.ok) {
+        setStatus("success");
+      } else {
+        setStatus("error");
+      }
+    } catch (err) {
+      console.error(err);
+      setStatus("network_error");
+    }
+    setLoading(false);
+  }
+
+  return (
+    <div className="container section">
+      <motion.div
+        className="modern-form-card"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <h2 className="form-title">Register for Demo</h2>
+        <p className="form-sub">Join the learning revolution 🚀</p>
+
+        {status === "success" && (
+          <motion.div
+            className="alert success modern-success"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+          >
+            🎉 Registration Successful!  
+            <br />A confirmation email has been sent to you.
+          </motion.div>
+        )}
+
+        {status === "error" && (
+          <div className="alert error">❌ Something went wrong!</div>
+        )}
+        {status === "network_error" && (
+          <div className="alert warn">⚠ Server unreachable (saved locally)</div>
+        )}
+
+        <form onSubmit={onSubmit} className="modern-form">
+          {["name", "email", "phone", "whatsapp", "location", "age"].map(
+            (field) => (
+              <div className="input-box" key={field}>
+                <input
+                  type="text"
+                  name={field}
+                  required
+                  value={form[field]}
+                  onChange={onChange}
+                />
+                <label>{field.toUpperCase()}</label>
+              </div>
+            )
+          )}
+
+          <motion.button
+            type="submit"
+            className="modern-btn"
+            disabled={loading}
+            whileTap={{ scale: 0.95 }}
+          >
+            {loading ? (
+              <motion.div
+                className="loader"
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+              />
+            ) : (
+              "Submit"
+            )}
+          </motion.button>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
 
 function Contact(){ return <div className="container section"><h2>Contact</h2><p>Email: support@example.com</p></div>; }
 function About(){ return <div className="container section"><h2>About</h2><p>Short about text.</p></div>; }
@@ -68,6 +271,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/about" element={<About />} />
+        <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
       <footer className="site-footer">
         <div className="container footer-inner">
