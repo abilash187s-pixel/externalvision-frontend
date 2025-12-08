@@ -12,6 +12,7 @@ const PRODUCTS = [
   { id: 'product-3', title: 'Creative Writing', preview: 'TBA', image: '/images/shot3.jpeg', price: '₹299' },
   { id: 'product-4', title: 'Music Theory Basics', preview: '10 Jan 2026', image: '/images/shot1.jpeg', price: '₹799' },
 ];
+const VITE_API_URL = https://api.externalvisionacademy.com
 
 function Navbar(){ 
   const [open, setOpen] = React.useState(false);
