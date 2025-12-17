@@ -163,7 +163,7 @@ const [form, setForm] = useState(initialForm);
 console.log("demo",import.meta.env.VITE_API_URL)
   // const VITE_API_URL =
   //   import.meta.env.VITE_API_URL || "http://localhost:5000" ;
-  const VITE_API_URL="https://externalvisionacademy-backend.onrender.com"
+  const VITE_API_URL="https://externalvisionacademy-backend.onrender.com";
 
   useEffect(() => {
     if (status === "success") {
