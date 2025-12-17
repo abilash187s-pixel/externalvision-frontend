@@ -5,13 +5,16 @@ import ProductSlider from './components/ProductSlider';
 import './styles.css';
 import Advantages from './components/Advantages';
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState,useEffect  } from "react";
 import AdminDashboard from './admin/AdminDashboard';
+import LearningPrograms from "./components/LearningPrograms";
+import BlogHero from "./components/BlogHero";
 
 const PRODUCTS = [
   { id: 'product-3', title: 'Creative Writing', preview: 'TBA', image: '/images/shot3.jpeg', price: '₹299' },
   { id: 'product-4', title: 'Music Theory Basics', preview: '10 Jan 2026', image: '/images/shot1.jpeg', price: '₹799' },
 ];
+
 
 function Navbar(){ 
   const [open, setOpen] = React.useState(false);
@@ -36,13 +39,13 @@ function Navbar(){
   );
 }
 
-function Hero(){ const heroFallback = '/images/hero-fallback.png'; const heroFallbackUploaded = '/mnt/data/Screenshot (8).png';
+function Hero(){ const heroFallback = 'https://www.salesforce.com/in/blog/wp-content/uploads/sites/9/2024/11/blog-affiliate-marketing.jpg?w=300'; const heroFallbackUploaded = 'https://www.salesforce.com/in/blog/wp-content/uploads/sites/9/2024/11/blog-affiliate-marketing.jpg?w=300';
   return (
     <section className="hero enhanced-hero">
       <div className="hero-media"><img className="hero-fallback" src={heroFallback} alt="India themed" onError={(e)=>{e.currentTarget.onerror=null; e.currentTarget.src=heroFallbackUploaded}}/></div>
       <div className="container hero-content">
         <div><h1>Learn from experts — anytime, anywhere</h1><p className="lead">Interactive classes, practical projects, and community support to help you grow.</p><div className="hero-cta"><Link to="/products" className="btn">View Courses</Link><Link to="/register" className="btn-outline">Register</Link></div></div>
-        <div className="hero-img"><img src="/images/shot1.jpeg" alt="hero" /></div>
+        <div className="hero-img"><img src="https://www.salesforce.com/in/blog/wp-content/uploads/sites/9/2024/11/blog-affiliate-marketing.jpg?w=300" alt="hero" /></div>
       </div>
     </section>
     
@@ -51,7 +54,7 @@ function Hero(){ const heroFallback = '/images/hero-fallback.png'; const heroFal
 
 function ProductCard({p}){ return (<div className="product-card"><div className="pc-media"><img src={p.image} alt={p.title}/></div><div className="pc-body"><h3>{p.title}</h3><p className="pc-meta">Starts: {p.preview} • {p.price}</p><p className="pc-desc">Short, engaging description to highlight outcomes and target learners.</p><div className="pc-actions"><Link to={`/product/${p.id}`} className="btn small">Details</Link><Link to="/register" className="btn-outline small">Book</Link></div></div></div>); }
 
-function Home(){ return (<main><Hero /><ProductSlider /> <Advantages /><section className="container section"><div className="section-header"><h2>Featured Courses</h2><p className="muted">Handpicked courses to get you started quickly.</p></div><div className="grid products-grid">{PRODUCTS.map(p => <ProductCard key={p.id} p={p} />)}</div></section><section className="container section subtle"><div className="two-col"><div><h3>Why choose E-Learn?</h3><ul><li>Practical projects and assignments</li><li>Experienced instructors</li><li>Lifetime access to course materials</li></ul></div><div><h3>Contact</h3><p>Email: support@example.com • Phone: +91 98765 43210</p></div></div></section></main>); }
+function Home(){ return (<main><Hero /> <LearningPrograms /> <Advantages /><section className="container section"><div className="section-header"><h2>Featured Courses</h2><p className="muted">Handpicked courses to get you started quickly.</p></div><div className="grid products-grid">{PRODUCTS.map(p => <ProductCard key={p.id} p={p} />)}</div></section><section className="container section subtle"><div className="two-col"><div><h3>Why choose E-Learn?</h3><ul><li>Practical projects and assignments</li><li>Experienced instructors</li><li>Lifetime access to course materials</li></ul></div><div><h3>Contact</h3><p>Email: support@example.com • Phone: +91 98765 43210</p></div></div></section></main>); }
 
 function ProductDetail(){ const { id } = useParams(); const p = PRODUCTS.find(x=>x.id===id); const nav = useNavigate(); if (!p) return <div className="container"><p>Not found</p></div>; return (<div className="container section"><button onClick={() => nav(-1)} className="btn-link">← Back</button><div className="detail-two"><img src={p.image} alt={p.title}/><div><h2>{p.title}</h2><p className="muted">Starts: {p.preview}</p><p>Longer course description with outcomes, syllabus and instructor info. Suitable for learners of all levels.</p><Link to="/register" className="btn">Register</Link></div></div></div>); }
 
@@ -145,49 +148,69 @@ function ProductDetail(){ const { id } = useParams(); const p = PRODUCTS.find(x=
 
 
 function Register() {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    whatsapp: "",
-    location: "",
-    age: "",
-  });
+  const initialForm = {
+  name: "",
+  email: "",
+  phone: "",
+  whatsapp: "",
+  location: "",
+  age: "",
+};
+const [form, setForm] = useState(initialForm);
 
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+console.log("demo",import.meta.env.VITE_API_URL)
+  // const VITE_API_URL =
+  //   import.meta.env.VITE_API_URL || "http://localhost:5000" ;
+  const VITE_API_URL="https://externalvisionacademy-backend.onrender.com"
 
-  const API =
-    import.meta.env.VITE_API_URL || "https://api.externalvisionacademy.com";
+  useEffect(() => {
+    if (status === "success") {
+      const t = setTimeout(() => {
+        setStatus(null);
+      }, 3000);
 
+      return () => clearTimeout(t);
+    }
+  }, [status]);
   function onChange(e) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
-  async function onSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
-    setStatus(null);
+async function onSubmit(e) {
+  e.preventDefault();
+  setLoading(true);
+  setStatus(null);
 
+  try {
+    const res = await fetch(`${VITE_API_URL}/api/submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+
+    let data = null;
     try {
-      const res = await fetch(`${API}/api/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json?.();
-      if (res.ok) {
-        setStatus("success");
-      } else {
-        setStatus("error");
-      }
-    } catch (err) {
-      console.error(err);
-      setStatus("network_error");
+      data = await res.json();
+    } catch (e) {
+      // ignore empty JSON
     }
+
+    if (res.ok) {
+      setStatus("success");   // ✅ correct
+      setForm(initialForm);
+    } else {
+      setStatus("error");
+    }
+  } catch (err) {
+    console.error(err);
+    setStatus("network_error"); // ❌ only when fetch itself fails
+  } finally {
     setLoading(false);
   }
+}
+
 
   return (
     <div className="container section">

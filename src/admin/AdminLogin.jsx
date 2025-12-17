@@ -8,7 +8,8 @@ export default function AdminLogin({ onLogin }) {
   const [showPw, setShowPw] = useState(false);
 
   const API_BASE =
-    import.meta.env.VITE_API_URL || "https://api.externalvisionacademy.com";
+    import.meta.env.VITE_API_URL || "http://localhost:5000";
+   const VITE_API_URL="https://externalvisionacademy-backend.onrender.com"
 
   async function submit(e) {
     e.preventDefault();
@@ -16,7 +17,7 @@ export default function AdminLogin({ onLogin }) {
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/admin/login`, {
+      const res = await fetch(`${VITE_API_URL}/admin/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

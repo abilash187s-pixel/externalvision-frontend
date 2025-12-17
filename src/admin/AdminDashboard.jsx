@@ -1,204 +1,158 @@
-import React, { useEffect, useState } from 'react';
-import AdminLogin from './AdminLogin';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip);
+import React, { useEffect, useState } from "react";
+import AdminLogin from "./AdminLogin";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Tooltip,
+} from "chart.js";
 
-function getToken() {
-  return localStorage.getItem('admin_token');
-}
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
-// at top of admin file
-const API_BASE = import.meta.env.VITE_API_URL || 'https://api.externalvisionacademy.com';
+// const VITE_API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const VITE_API_URL="https://externalvisionacademy-backend.onrender.com"
 
-function authFetch(url, opts = {}) {
-  opts.headers = opts.headers || {};
-  const tk = localStorage.getItem('admin_token');
-  if (tk) opts.headers.Authorization = 'Bearer ' + tk;
-  const full = url.startsWith('http') ? url : (API_BASE.replace(/\/$/,'') + (url.startsWith('/') ? url : '/'+url));
-  return fetch(full, opts);
-}
-
-
-function DetailsModal({ item, onClose }) {
-  if (!item) return null;
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={e=>e.stopPropagation()}>
-        <h3>Details</h3>
-        <pre style={{whiteSpace:'pre-wrap'}}>{JSON.stringify(item, null, 2)}</pre>
-        <button onClick={onClose}>Close</button>
-      </div>
-    </div>
-  );
+function authFetch(url) {
+  const token = localStorage.getItem("admin_token");
+  return fetch(VITE_API_URL + url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }
 
 export default function AdminDashboard() {
-  const [token, setToken] = useState(getToken());
-  const [items, setItems] = useState([]);
-  const [q, setQ] = useState('');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState(null);
-  const [sortBy, setSortBy] = useState('receivedAt');
-  const [sortDir, setSortDir] = useState('desc');
-  const [dark, setDark] = useState(false);
-  const [stats, setStats] = useState([]);
+  const [token, setToken] = useState(localStorage.getItem("admin_token"));
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(()=> {
-    if (token) load();
-    // eslint-disable-next-line
-  }, [token, page, pageSize, q, sortBy, sortDir]);
+  useEffect(() => {
+    if (token) loadData();
+  }, [token]);
 
-  async function load() {
-    setLoading(true);
-    const params = new URLSearchParams({ q, page, pageSize, sortBy, sortDir });
+  async function loadData() {
     try {
-      const res = await authFetch('/admin/submissions?' + params.toString());
-      if (!res.ok) {
-        if (res.status === 401) { logout(); return; }
-        throw new Error('Failed');
+      const res = await authFetch("/admin/submissions");
+      if (res.status === 401) {
+        logout();
+        return;
       }
       const data = await res.json();
-      setItems(data.items || []);
-      setTotal(data.total || 0);
+      setRecords(data.items || []);
     } catch (e) {
       console.error(e);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   function logout() {
-    localStorage.removeItem('admin_token');
+    localStorage.removeItem("admin_token");
     setToken(null);
   }
 
-  async function doDelete(receivedAt) {
-    if (!confirm('Delete this submission?')) return;
-    try {
-      const res = await authFetch('/admin/submissions/' + encodeURIComponent(receivedAt), { method: 'DELETE' });
-      if (res.ok) load();
-      else alert('Delete failed');
-    } catch (e) { console.error(e); }
-  }
+  function downloadCSV() {
+    const headers = ["Name", "Email", "Phone", "Location", "Date"];
+    const rows = records.map(r => [
+      r.name,
+      r.email,
+      r.phone,
+      r.location,
+      new Date(r.receivedAt).toLocaleDateString(),
+    ]);
 
-  async function exportCSV() {
-    const res = await authFetch('/admin/export/csv');
-    if (!res.ok) { alert('Export failed'); return; }
-    const blob = await res.blob();
+    const csv =
+      headers.join(",") +
+      "\n" +
+      rows.map(r => r.map(v => `"${v || ""}"`).join(",")).join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = 'submissions.csv';
+    a.download = "registrations.csv";
     a.click();
     URL.revokeObjectURL(url);
   }
 
-  async function exportXLSX() {
-    const res = await authFetch('/admin/export/xlsx');
-    if (!res.ok) { alert('Export failed'); return; }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'submissions.xlsx';
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function loadStats() {
-    try {
-      const res = await authFetch('/admin/stats/registrations?days=30');
-      if (!res.ok) return;
-      const data = await res.json();
-      setStats(data.data || []);
-    } catch(e) { console.error(e); }
-  }
-
-  useEffect(()=> { if (token) loadStats(); }, [token]);
-
-  if (!token) {
-    return <AdminLogin onLogin={(tk)=>{ localStorage.setItem('admin_token', tk); setToken(tk); }} />;
-  }
+  // Graph data (frontend aggregation)
+  const dateMap = {};
+  records.forEach(r => {
+    const d = new Date(r.receivedAt).toLocaleDateString();
+    dateMap[d] = (dateMap[d] || 0) + 1;
+  });
 
   const chartData = {
-    labels: stats.map(s => s.date),
-    datasets: [{ label: 'Registrations', data: stats.map(s => s.count) }]
+    labels: Object.keys(dateMap),
+    datasets: [
+      {
+        label: "Registrations",
+        data: Object.values(dateMap),
+      },
+    ],
   };
 
+  if (!token) {
+    return (
+      <AdminLogin
+        onLogin={(tk) => {
+          localStorage.setItem("admin_token", tk);
+          setToken(tk);
+        }}
+      />
+    );
+  }
+
   return (
-    <div className={dark ? 'admin-dark' : 'admin-light'}>
-      <div className="admin-toolbar">
-        <div className="left">
-          <h2>Admin — Submissions</h2>
-          <button onClick={()=>setDark(d=>!d)}>{dark ? 'Light' : 'Dark'}</button>
+    <div className="admin-root">
+      {/* HEADER */}
+      <header className="admin-header">
+        <h2>Admin Dashboard</h2>
+        <div>
+          <button onClick={downloadCSV}>Download CSV</button>
+          <button onClick={logout} className="logout">Logout</button>
         </div>
+      </header>
 
-        <div className="right">
-          <input placeholder="Search name/email/phone" value={q} onChange={e=>setQ(e.target.value)} />
-          <button onClick={()=>{ setPage(1); load(); }}>Search</button>
-          <button onClick={exportCSV}>Export CSV</button>
-          <button onClick={exportXLSX}>Export XLSX</button>
-          <button onClick={logout}>Logout</button>
-        </div>
-      </div>
+      {/* GRAPH */}
+      <section className="admin-card">
+        <h3>Registrations Overview</h3>
+        <Bar data={chartData} />
+      </section>
 
-      <div className="admin-layout">
-        <div className="admin-left">
-          <div className="admin-table">
-            <table>
-              <thead>
-                <tr>
-                  <th onClick={()=>{ setSortBy('receivedAt'); setSortDir(d=>d==='asc'?'desc':'asc'); }}>Date</th>
-                  <th onClick={()=>{ setSortBy('name'); setSortDir(d=>d==='asc'?'desc':'asc'); }}>Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
-                  <th>Location</th>
-                  <th>Actions</th>
+      {/* TABLE */}
+      <section className="admin-card">
+        <h3>Registrations List</h3>
+
+        {loading ? (
+          <p>Loading...</p>
+        ) : (
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Location</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {records.map((r, i) => (
+                <tr key={i}>
+                  <td>{r.name}</td>
+                  <td>{r.email}</td>
+                  <td>{r.phone}</td>
+                  <td>{r.location}</td>
+                  <td>{new Date(r.receivedAt).toLocaleString()}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {items.map(it => (
-                  <tr key={it.receivedAt}>
-                    <td>{it.receivedAt}</td>
-                    <td>{it.name}</td>
-                    <td>{it.email}</td>
-                    <td>{it.phone}</td>
-                    <td>{it.location}</td>
-                    <td>
-                      <button onClick={()=>setSelected(it)}>View</button>
-                      <button onClick={()=>doDelete(it.receivedAt)}>Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {loading && <div>Loading…</div>}
-          </div>
-
-          <div className="pagination">
-            <button disabled={page<=1} onClick={()=>{setPage(p=>Math.max(1,p-1))}}>Prev</button>
-            <span>Page {page} / {Math.ceil(total / pageSize || 1)}</span>
-            <button disabled={page >= Math.ceil(total/pageSize || 1)} onClick={()=>setPage(p=>p+1)}>Next</button>
-          </div>
-        </div>
-
-        <div className="admin-right">
-          <div className="card">
-            <h3>Registrations (last 30 days)</h3>
-            <Bar data={chartData} />
-          </div>
-
-          <div className="card">
-            <h3>Quick actions</h3>
-            <button onClick={()=>{ setPage(1); setQ(''); load(); }}>Refresh</button>
-            <button onClick={exportCSV}>Export CSV</button>
-          </div>
-        </div>
-      </div>
-
-      <DetailsModal item={selected} onClose={()=>setSelected(null)} />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
     </div>
   );
 }
